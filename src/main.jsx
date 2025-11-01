@@ -25,7 +25,8 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <ThemeBoot />
     <ToastProvider>
-      <BrowserRouter>
+      {/* usa o base do Vite aqui */}
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <App />
       </BrowserRouter>
     </ToastProvider>
