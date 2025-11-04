@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuotes } from '../store/quotesStore'
 import { useAuth, can } from '../store/authStore'
@@ -24,7 +24,7 @@ const statusRowBg = {
 
 export default function QuotesList() {
   const { list, update, remove } = useQuotes()
-  const { caps} = useAuth()
+  const { caps } = useAuth()
   const { addToast } = useToast()
   const navigate = useNavigate()
   const { user } = useAuth() // ← ADICIONAR ESTA LINHA
@@ -32,7 +32,7 @@ export default function QuotesList() {
   const [q, setQ] = useState('')
   const [fStatus, setFStatus] = useState('todos')
   const [previewQt, setPreviewQt] = useState(null)
-  const [openActionsId, setOpenActionsId] = useState(null) // Controla qual dropdown está aberto
+  const [openActionsId, setOpenActionsId] = useState(null)
 
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase()
@@ -190,7 +190,10 @@ export default function QuotesList() {
             </div>
           )}
 
-          {filtered.map(qt => (
+          {filtered.map((qt, index) => {
+            const isNearBottom = index >= filtered.length - 2
+            
+            return (
             <div 
               key={qt.id} 
               className={`px-4 py-3 transition-colors ${statusRowBg[qt.status] || ''} hover:bg-opacity-80`}
@@ -321,12 +324,12 @@ export default function QuotesList() {
                       <>
                         {/* Backdrop para fechar ao clicar fora */}
                         <div 
-                          className="fixed inset-0 z-10" 
+                          className="fixed inset-0 z-40" 
                           onClick={() => setOpenActionsId(null)}
                         />
                         
-                        {/* Dropdown */}
-                        <div className="absolute right-0 mt-2 w-48 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-lg overflow-hidden z-20">
+                        {/* Dropdown - abre pra cima se for um dos últimos 2 */}
+                        <div className={`absolute right-0 w-48 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-lg overflow-hidden z-50 ${isNearBottom ? 'bottom-full mb-2' : 'mt-2'}`}>
                           <button
                             onClick={() => {
                               setPreviewQt(qt)
@@ -411,7 +414,8 @@ export default function QuotesList() {
                 </div>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
