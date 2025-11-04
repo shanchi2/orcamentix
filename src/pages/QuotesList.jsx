@@ -248,7 +248,7 @@ export default function QuotesList() {
                 </div>
 
                 {/* Ações */}
-                <div className="md:col-span-2 flex justify-end">
+                <div className="md:col-span-2 flex justify-end z-60">
                   {/* Botões inline para telas >= 1800px */}
                   <div className="hidden min-[1800px]:flex gap-2">
                     <button
