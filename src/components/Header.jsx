@@ -1,3 +1,5 @@
+// Header.jsx — versão ajustada para integração com PlanSwitch
+
 import { useState, useRef, useEffect } from 'react'
 import { Menu, Moon, Sun, User, Settings, LogOut, ChevronDown } from 'lucide-react'
 import { useUI } from '../store/uiStore'
@@ -7,16 +9,21 @@ import PlanSwitch from './PlanSwitch'
 
 export default function Header() {
   const { toggleSidebar, toggleTheme } = useUI()
-  const { user, logout } = useAuth()
+  const { user, logout, plan, setPlan } = useAuth()
   const navigate = useNavigate()
-  
+
   const [showUserMenu, setShowUserMenu] = useState(false)
   const menuRef = useRef(null)
 
   // Fechar dropdown ao clicar fora
   useEffect(() => {
     function handleClickOutside(event) {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+      try {
+        if (menuRef.current && !menuRef.current.contains(event.target)) {
+          setShowUserMenu(false)
+        }
+      } catch (e) {
+        // fallback seguro se menuRef.current for inesperadamente nulo ou não tiver contains
         setShowUserMenu(false)
       }
     }
@@ -24,10 +31,20 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Função para pegar iniciais do nome
-  function getInitials(name) {
-    if (!name) return 'U'
-    const parts = name.trim().split(' ')
+  // Função para pegar iniciais do nome (trata e‑mail e nomes com 1 palavra)
+  function getInitials(nameOrEmail) {
+    if (!nameOrEmail) return 'U'
+    const s = String(nameOrEmail).trim()
+    // se for e-mail, usa parte antes do @ para gerar iniciais
+    if (s.includes('@')) {
+      const local = s.split('@')[0]
+      const parts = local.split(/[.\-_]/).filter(Boolean)
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      }
+      return local.substring(0, 2).toUpperCase()
+    }
+    const parts = s.split(' ').filter(Boolean)
     if (parts.length >= 2) {
       return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
     }
@@ -61,7 +78,8 @@ export default function Header() {
 
         {/* ações à direita */}
         <div className="ml-auto flex items-center gap-2">
-          <PlanSwitch />
+          {/* Passa plan e setPlan explicitamente para evitar depender de leitura implícita do store dentro do componente */}
+          <PlanSwitch plan={plan} setPlan={setPlan} />
 
           {/* tema */}
           <button
@@ -84,8 +102,8 @@ export default function Header() {
               <div className="w-7 h-7 rounded-full bg-blue-600 dark:bg-blue-500 flex items-center justify-center text-white text-xs font-semibold">
                 {getInitials(user?.name || user?.email)}
               </div>
-              <ChevronDown 
-                size={14} 
+              <ChevronDown
+                size={14}
                 className={`text-zinc-500 dark:text-zinc-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`}
               />
             </button>

@@ -22,12 +22,19 @@ const statusRowBg = {
   rejeitado:'bg-rose-50/50 dark:bg-rose-950/10',
 }
 
+
+
 export default function QuotesList() {
   const { list, update, remove } = useQuotes()
   const { caps } = useAuth()
   const { addToast } = useToast()
   const navigate = useNavigate()
   const { user } = useAuth() // ← ADICIONAR ESTA LINHA
+
+const canPdf = useMemo(() => can(caps, 'pdf'), [caps])
+const canWhatsapp = useMemo(() => can(caps, 'whatsapp'), [caps])
+
+
 
   const [q, setQ] = useState('')
   const [fStatus, setFStatus] = useState('todos')
@@ -250,65 +257,70 @@ export default function QuotesList() {
                 {/* Ações */}
                 <div className="md:col-span-2 flex justify-end z-60">
                   {/* Botões inline para telas >= 1800px */}
-                  <div className="hidden min-[1800px]:flex gap-2">
-                    <button
-                      onClick={() => setPreviewQt(qt)}
-                      className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors"
-                      title="Visualizar proposta"
-                    >
-                      <Eye size={16} />
-                    </button>
+{/* inline actions (substituir o bloco inline atual) */}
+<div className="hidden min-[1800px]:flex gap-2">
+  <button
+    onClick={() => setPreviewQt(qt)}
+    className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors"
+    title="Visualizar proposta"
+  >
+    <Eye size={16} />
+  </button>
 
-                    <button
-                      onClick={() => navigate(`/quotes/${qt.id}/edit`)}
-                      className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
-                      title="Editar"
-                    >
-                      <Edit2 size={16} />
-                    </button>
+  <button
+    onClick={() => navigate(`/quotes/${qt.id}/edit`)}
+    className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
+    title="Editar"
+  >
+    <Edit2 size={16} />
+  </button>
 
-                    <button
-                      onClick={() => handlePdf(qt)}
-                      disabled={!can(caps, 'pdf')}
-                      className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={can(caps, 'pdf') ? 'Gerar PDF' : 'Recurso indisponível no seu plano'}
-                    >
-                      <FileText size={16} />
-                    </button>
+  <button
+    onClick={() => handlePdf(qt)}
+    disabled={!canPdf}
+    className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+    title={canPdf ? 'Gerar PDF' : 'Recurso indisponível no seu plano'}
+  >
+    <FileText size={16} />
+  </button>
 
-                    <a
-                      href={can(caps, 'whatsapp') ? whatsLink(qt) : undefined}
-                      onClick={e => handleWhatsapp(e, qt)}
-                      className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
-                      title={can(caps, 'whatsapp') ? 'Compartilhar WhatsApp' : 'Recurso indisponível no seu plano'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <svg viewBox="0 0 32 32" fill="currentColor" className="w-4 h-4">
-                        <path d="M19.11 17.13c-.28-.14-1.63-.8-1.88-.9-.25-.09-.43-.14-.62.14-.19.28-.72.9-.88 1.09-.16.19-.33.21-.61.07-.28-.14-1.18-.43-2.25-1.37-.83-.74-1.39-1.66-1.55-1.94-.16-.28-.02-.43.12-.57.12-.12.28-.33.42-.5.14-.17.19-.28.28-.47.09-.19.05-.36-.02-.5-.07-.14-.62-1.5-.85-2.06-.22-.53-.45-.46-.62-.47l-.53-.01c-.19 0-.5.07-.76.36-.26.28-.99.97-.99 2.37 0 1.4 1.02 2.75 1.16 2.94.14.19 2 3.06 4.85 4.29.68.29 1.21.46 1.62.58.68.22 1.31.19 1.8.11.55-.08 1.63-.67 1.86-1.32.23-.65.23-1.21.16-1.32-.07-.11-.26-.18-.53-.32z"/>
-                        <path d="M26.55 5.45C23.76 2.66 20.08 1.2 16.2 1.2 8.55 1.2 2.3 7.45 2.3 15.1c0 2.43.64 4.79 1.85 6.88L2 30.8l8.99-2.07c1.99 1.09 4.24 1.67 6.52 1.67 7.65 0 13.9-6.25 13.9-13.9 0-3.72-1.45-7.4-4.34-10.19zM16.2 27.37c-2.02 0-4-.54-5.72-1.56l-.41-.24-5.33 1.23 1.14-5.2-.25-.42a11.2 11.2 0 0 1-1.63-5.98c0-6.19 5.03-11.22 11.22-11.22 3 0 5.82 1.17 7.94 3.29a11.16 11.16 0 0 1 3.29 7.94c0 6.19-5.03 11.22-11.22 11.22z"/>
-                      </svg>
-                    </a>
+{/* botões inline */}
+<button
+  onClick={(e) => {
+    if (!canWhatsapp) return
+    // abre em nova aba como o anchor fazia
+    window.open(whatsLink(qt), '_blank', 'noopener,noreferrer')
+  }}
+  disabled={!canWhatsapp}
+  className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+  title={canWhatsapp ? 'Compartilhar WhatsApp' : 'Recurso indisponível no seu plano'}
+  aria-disabled={!canWhatsapp}
+>
+  <svg viewBox="0 0 32 32" fill="currentColor" className="w-4 h-4">
+    <path d="M19.11 17.13c-.28-.14-1.63-.8-1.88-.9-.25-.09-.43-.14-.62.14-.19.28-.72.9-.88 1.09-.16.19-.33.21-.61.07-.28-.14-1.18-.43-2.25-1.37-.83-.74-1.39-1.66-1.55-1.94-.16-.28-.02-.43.12-.57.12-.12.28-.33.42-.5.14-.17.19-.28.28-.47.09-.19.05-.36-.02-.5-.07-.14-.62-1.5-.85-2.06-.22-.53-.45-.46-.62-.47l-.53-.01c-.19 0-.5.07-.76.36-.26.28-.99.97-.99 2.37 0 1.4 1.02 2.75 1.16 2.94.14.19 2 3.06 4.85 4.29.68.29 1.21.46 1.62.58.68.22 1.31.19 1.8.11.55-.08 1.63-.67 1.86-1.32.23-.65.23-1.21.16-1.32-.07-.11-.26-.18-.53-.32z"/>
+    <path d="M26.55 5.45C23.76 2.66 20.08 1.2 16.2 1.2 8.55 1.2 2.3 7.45 2.3 15.1c0 2.43.64 4.79 1.85 6.88L2 30.8l8.99-2.07c1.99 1.09 4.24 1.67 6.52 1.67 7.65 0 13.9-6.25 13.9-13.9 0-3.72-1.45-7.4-4.34-10.19zM16.2 27.37c-2.02 0-4-.54-5.72-1.56l-.41-.24-5.33 1.23 1.14-5.2-.25-.42a11.2 11.2 0 0 1-1.63-5.98c0-6.19 5.03-11.22 11.22-11.22 3 0 5.82 1.17 7.94 3.29a11.16 11.16 0 0 1 3.29 7.94c0 6.19-5.03 11.22-11.22 11.22z"/>
+  </svg>
+</button>
 
-                    <a
-                      href={mailtoLink(qt)}
-                      onClick={() => handleEmail(qt)}
-                      className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors"
-                      title="E-mail (resumo)"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Mail size={16} />
-                    </a>
+  <a
+    href={mailtoLink(qt)}
+    onClick={() => handleEmail(qt)}
+    className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors"
+    title="E-mail (resumo)"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    <Mail size={16} />
+  </a>
 
-                    <button
-                      onClick={() => handleRemove(qt)}
-                      className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
-                      title="Excluir"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+  <button
+    onClick={() => handleRemove(qt)}
+    className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+    title="Excluir"
+  >
+    <Trash2 size={16} />
+  </button>
+</div>
 
                   {/* Dropdown de ações para telas < 1800px */}
                   <div className="min-[1800px]:hidden relative">
@@ -364,22 +376,22 @@ export default function QuotesList() {
                             Gerar PDF
                           </button>
 
-                          <a
-                            href={can(caps, 'whatsapp') ? whatsLink(qt) : undefined}
-                            onClick={e => {
-                              handleWhatsapp(e, qt)
-                              setOpenActionsId(null)
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-green-50 dark:hover:bg-green-950/20 transition-colors"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <svg viewBox="0 0 32 32" fill="currentColor" className="w-4 h-4 text-green-600 dark:text-green-400">
-                              <path d="M19.11 17.13c-.28-.14-1.63-.8-1.88-.9-.25-.09-.43-.14-.62.14-.19.28-.72.9-.88 1.09-.16.19-.33.21-.61.07-.28-.14-1.18-.43-2.25-1.37-.83-.74-1.39-1.66-1.55-1.94-.16-.28-.02-.43.12-.57.12-.12.28-.33.42-.5.14-.17.19-.28.28-.47.09-.19.05-.36-.02-.5-.07-.14-.62-1.5-.85-2.06-.22-.53-.45-.46-.62-.47l-.53-.01c-.19 0-.5.07-.76.36-.26.28-.99.97-.99 2.37 0 1.4 1.02 2.75 1.16 2.94.14.19 2 3.06 4.85 4.29.68.29 1.21.46 1.62.58.68.22 1.31.19 1.8.11.55-.08 1.63-.67 1.86-1.32.23-.65.23-1.21.16-1.32-.07-.11-.26-.18-.53-.32z"/>
-                              <path d="M26.55 5.45C23.76 2.66 20.08 1.2 16.2 1.2 8.55 1.2 2.3 7.45 2.3 15.1c0 2.43.64 4.79 1.85 6.88L2 30.8l8.99-2.07c1.99 1.09 4.24 1.67 6.52 1.67 7.65 0 13.9-6.25 13.9-13.9 0-3.72-1.45-7.4-4.34-10.19zM16.2 27.37c-2.02 0-4-.54-5.72-1.56l-.41-.24-5.33 1.23 1.14-5.2-.25-.42a11.2 11.2 0 0 1-1.63-5.98c0-6.19 5.03-11.22 11.22-11.22 3 0 5.82 1.17 7.94 3.29a11.16 11.16 0 0 1 3.29 7.94c0 6.19-5.03 11.22-11.22 11.22z"/>
-                            </svg>
-                            WhatsApp
-                          </a>
+<button
+  onClick={() => {
+    if (!canWhatsapp) return
+    setOpenActionsId(null)
+    window.open(whatsLink(qt), '_blank', 'noopener,noreferrer')
+  }}
+  disabled={!canWhatsapp}
+  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-green-50 dark:hover:bg-green-950/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+  title={canWhatsapp ? 'Compartilhar WhatsApp' : 'Recurso indisponível no seu plano'}
+>
+  <svg viewBox="0 0 32 32" fill="currentColor" className="w-4 h-4 text-green-600 dark:text-green-400">
+    <path d="M19.11 17.13c-.28-.14-1.63-.8-1.88-.9-.25-.09-.43-.14-.62.14-.19.28-.72.9-.88 1.09-.16.19-.33.21-.61.07-.28-.14-1.18-.43-2.25-1.37-.83-.74-1.39-1.66-1.55-1.94-.16-.28-.02-.43.12-.57.12-.12.28-.33.42-.5.14-.17.19-.28.28-.47.09-.19.05-.36-.02-.5-.07-.14-.62-1.5-.85-2.06-.22-.53-.45-.46-.62-.47l-.53-.01c-.19 0-.5.07-.76.36-.26.28-.99.97-.99 2.37 0 1.4 1.02 2.75 1.16 2.94.14.19 2 3.06 4.85 4.29.68.29 1.21.46 1.62.58.68.22 1.31.19 1.8.11.55-.08 1.63-.67 1.86-1.32.23-.65.23-1.21.16-1.32-.07-.11-.26-.18-.53-.32z"/>
+    <path d="M26.55 5.45C23.76 2.66 20.08 1.2 16.2 1.2 8.55 1.2 2.3 7.45 2.3 15.1c0 2.43.64 4.79 1.85 6.88L2 30.8l8.99-2.07c1.99 1.09 4.24 1.67 6.52 1.67 7.65 0 13.9-6.25 13.9-13.9 0-3.72-1.45-7.4-4.34-10.19zM16.2 27.37c-2.02 0-4-.54-5.72-1.56l-.41-.24-5.33 1.23 1.14-5.2-.25-.42a11.2 11.2 0 0 1-1.63-5.98c0-6.19 5.03-11.22 11.22-11.22 3 0 5.82 1.17 7.94 3.29a11.16 11.16 0 0 1 3.29 7.94c0 6.19-5.03 11.22-11.22 11.22z"/>
+  </svg>
+  WhatsApp
+</button>
 
                           <a
                             href={mailtoLink(qt)}

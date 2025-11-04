@@ -14,7 +14,7 @@ export function makeQuotePdfPlus(quote, userCompany = {}) {
   const pageHeight = doc.internal.pageSize.height
   let yPos = 20
 
-  const hasLogo = userCompany?.logo // Verifica se tem logo
+  const hasLogo = !!userCompany?.logo // Verifica se tem logo
 
   // ======= HEADER =======
   // Linha azul no topo
@@ -27,25 +27,37 @@ export function makeQuotePdfPlus(quote, userCompany = {}) {
   // Logo do cliente (condicional)
   if (hasLogo) {
     try {
-      // Aqui você carregaria a imagem real
-      // doc.addImage(userCompany.logo, 'PNG', 15, yPos, 30, 30)
-      
-      // Placeholder visual
+      // Tenta adicionar imagem se for dataURL ou base64
+      if (typeof userCompany.logo === 'string' && userCompany.logo.startsWith('data:')) {
+        doc.addImage(userCompany.logo, 'PNG', 15, yPos, 30, 30)
+      } else {
+        // Se for URL externa, addImage pode falhar no ambiente do navegador sem pré-fetch.
+        // Você pode pré-carregar a imagem como DataURL no cliente antes de chamar esta função.
+        // Aqui deixamos um placeholder visual se não for DataURL.
+        doc.setFillColor(59, 130, 246)
+        doc.rect(15, yPos, 30, 30, 'F')
+        doc.setFontSize(16)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(255, 255, 255)
+        doc.text('LOGO', 20, yPos + 20)
+      }
+
+      yPos += 35
+    } catch (e) {
+      console.error('Erro ao carregar logo:', e)
+      // fallback visual
       doc.setFillColor(59, 130, 246)
       doc.rect(15, yPos, 30, 30, 'F')
       doc.setFontSize(16)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(255, 255, 255)
       doc.text('LOGO', 20, yPos + 20)
-      
       yPos += 35
-    } catch (e) {
-      console.error('Erro ao carregar logo:', e)
     }
   }
 
   // Nome da empresa em destaque
-  const startX = hasLogo ? 15 : 15
+  const startX = 15
   const startY = hasLogo ? 25 : yPos
 
   doc.setFontSize(18)
@@ -59,7 +71,7 @@ export function makeQuotePdfPlus(quote, userCompany = {}) {
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(100, 100, 100)
     let infoY = startY + 14
-    
+
     if (userCompany.phone) {
       doc.text(`Tel: ${userCompany.phone}`, startX + (hasLogo ? 35 : 0), infoY)
       infoY += 4
@@ -78,7 +90,7 @@ export function makeQuotePdfPlus(quote, userCompany = {}) {
   doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(100, 100, 100)
-  const quoteDate = quote.createdAt 
+  const quoteDate = quote?.createdAt
     ? new Date(quote.createdAt).toLocaleDateString('pt-BR')
     : new Date().toLocaleDateString('pt-BR')
   doc.text(quoteDate, pageWidth - 15, startY + 11, { align: 'right' })
@@ -88,7 +100,16 @@ export function makeQuotePdfPlus(quote, userCompany = {}) {
   // ======= DADOS DO CLIENTE (BOX DESTACADO) =======
   doc.setFillColor(248, 250, 252) // zinc-50
   doc.setDrawColor(226, 232, 240) // zinc-300
-  doc.roundedRect(15, yPos, pageWidth - 30, 28, 3, 3, 'FD')
+  // roundedRect fallback: se não existir, usa rect
+  if (typeof doc.roundedRect === 'function') {
+    try {
+      doc.roundedRect(15, yPos, pageWidth - 30, 28, 3, 3, 'FD')
+    } catch {
+      doc.rect(15, yPos, pageWidth - 30, 28, 'FD')
+    }
+  } else {
+    doc.rect(15, yPos, pageWidth - 30, 28, 'FD')
+  }
 
   // Título do box
   doc.setFontSize(9)
@@ -105,9 +126,9 @@ export function makeQuotePdfPlus(quote, userCompany = {}) {
   const col2X = pageWidth / 2 + 10
   let clientY = yPos + 13
 
-  doc.text(`${quote.cliente?.nome || '—'}`, col1X, clientY)
-  
-  if (quote.cliente?.empresa) {
+  doc.text(`${quote?.cliente?.nome || '—'}`, col1X, clientY)
+
+  if (quote?.cliente?.empresa) {
     clientY += 5
     doc.setFontSize(9)
     doc.setTextColor(100, 100, 100)
@@ -115,78 +136,105 @@ export function makeQuotePdfPlus(quote, userCompany = {}) {
   }
 
   clientY = yPos + 13
-  if (quote.cliente?.telefone) {
+  if (quote?.cliente?.telefone) {
     doc.setFontSize(9)
     doc.setTextColor(100, 100, 100)
     doc.text(`Tel: ${quote.cliente.telefone}`, col2X, clientY)
     clientY += 5
   }
-  
-  if (quote.cliente?.email) {
+
+  if (quote?.cliente?.email) {
     doc.text(quote.cliente.email, col2X, clientY)
   }
 
   yPos += 35
 
   // ======= TABELA DE ITENS =======
-  const tableData = (quote.itens || []).map(item => [
+  const tableData = (quote?.itens || []).map(item => [
     item.nome || '—',
-    `${item.qtd} ${item.unidade || ''}`,
+    `${item.qtd || 0} ${item.unidade || ''}`.trim(),
     `R$ ${Number(item.preco || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-    `R$ ${((item.qtd || 0) * (item.preco || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+    `R$ ${((Number(item.qtd || 0)) * (Number(item.preco || 0))).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
   ])
 
-  autoTable({
-    startY: yPos,
-    head: [['Serviço', 'Qtd', 'Valor Unit.', 'Subtotal']],
-    body: tableData,
-    theme: 'grid',
-    headStyles: {
-      fillColor: [59, 130, 246], // blue-500
-      textColor: [255, 255, 255],
-      fontSize: 10,
-      fontStyle: 'bold',
-      halign: 'left',
-      cellPadding: 4
-    },
-    bodyStyles: {
-      fontSize: 9,
-      textColor: [40, 40, 40],
-      cellPadding: 4
-    },
-    alternateRowStyles: {
-      fillColor: [248, 250, 252] // zebra striping
-    },
-    columnStyles: {
-      0: { cellWidth: 90 },
-      1: { cellWidth: 30, halign: 'center' },
-      2: { cellWidth: 32, halign: 'right' },
-      3: { cellWidth: 33, halign: 'right', fontStyle: 'bold' }
-    },
-    margin: { left: 15, right: 15 }
-  })
+  // usa autoTable(doc, options) — compatível com a maioria das versões
+  try {
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Serviço', 'Qtd', 'Valor Unit.', 'Subtotal']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [59, 130, 246], // blue-500
+        textColor: [255, 255, 255],
+        fontSize: 10,
+        fontStyle: 'bold',
+        halign: 'left',
+        cellPadding: 4
+      },
+      bodyStyles: {
+        fontSize: 9,
+        textColor: [40, 40, 40],
+        cellPadding: 4
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252] // zebra striping
+      },
+      columnStyles: {
+        0: { cellWidth: 90 },
+        1: { cellWidth: 30, halign: 'center' },
+        2: { cellWidth: 32, halign: 'right' },
+        3: { cellWidth: 33, halign: 'right', fontStyle: 'bold' }
+      },
+      margin: { left: 15, right: 15 }
+    })
+  } catch (err) {
+    console.error('Erro ao gerar tabela no PDF (autoTable):', err)
+    // fallback: desenha uma tabela simples (degrade de funcionalidade)
+    let fallbackY = yPos
+    doc.setFontSize(9)
+    tableData.forEach(row => {
+      doc.text(row.join('  |  '), 15, fallbackY)
+      fallbackY += 6
+      if (fallbackY > pageHeight - 60) {
+        doc.addPage()
+        fallbackY = 20
+      }
+    })
+    yPos = fallbackY + 8
+  }
 
-  yPos = doc.lastAutoTable.finalY + 12
+  // obtém finalY do autoTable de forma segura
+  const lastAutoY = (doc?.lastAutoTable && doc.lastAutoTable.finalY) || (doc?.previousAutoTable && doc.previousAutoTable.finalY) || null
+  yPos = lastAutoY ? lastAutoY + 12 : yPos + 12
 
   // ======= RESUMO FINANCEIRO (BOX DESTACADO) =======
-  const subtotal = quote.subtotal || 0
-  const margemVal = subtotal * ((quote.margem || 0) / 100)
-  const descVal = subtotal * ((quote.desconto || 0) / 100)
-  const total = quote.total || 0
+  const subtotal = Number(quote?.subtotal || 0)
+  const margemVal = subtotal * ((Number(quote?.margem || 0)) / 100)
+  const descVal = subtotal * ((Number(quote?.desconto || 0)) / 100)
+  const total = Number(quote?.total || subtotal + margemVal - descVal)
 
   const boxX = pageWidth - 80
   const boxY = yPos
   const boxWidth = 65
   let boxHeight = 30
 
-  if (quote.margem) boxHeight += 6
-  if (quote.desconto) boxHeight += 6
+  if (quote?.margem) boxHeight += 6
+  if (quote?.desconto) boxHeight += 6
 
   // Box com borda azul
   doc.setFillColor(248, 250, 252)
   doc.setDrawColor(59, 130, 246)
   doc.setLineWidth(0.5)
-  doc.roundedRect(boxX, boxY, boxWidth, boxHeight, 3, 3, 'FD')
+  if (typeof doc.roundedRect === 'function') {
+    try {
+      doc.roundedRect(boxX, boxY, boxWidth, boxHeight, 3, 3, 'FD')
+    } catch {
+      doc.rect(boxX, boxY, boxWidth, boxHeight, 'FD')
+    }
+  } else {
+    doc.rect(boxX, boxY, boxWidth, boxHeight, 'FD')
+  }
 
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
@@ -196,7 +244,7 @@ export function makeQuotePdfPlus(quote, userCompany = {}) {
   doc.text('Subtotal:', boxX + 4, resumoY)
   doc.text(`R$ ${subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, boxX + boxWidth - 4, resumoY, { align: 'right' })
 
-  if (quote.margem) {
+  if (quote?.margem) {
     resumoY += 6
     doc.setTextColor(34, 197, 94) // green
     doc.text(`Margem (${quote.margem}%):`, boxX + 4, resumoY)
@@ -204,7 +252,7 @@ export function makeQuotePdfPlus(quote, userCompany = {}) {
     doc.setTextColor(80, 80, 80)
   }
 
-  if (quote.desconto) {
+  if (quote?.desconto) {
     resumoY += 6
     doc.setTextColor(239, 68, 68) // red
     doc.text(`Desconto (${quote.desconto}%):`, boxX + 4, resumoY)
@@ -227,9 +275,9 @@ export function makeQuotePdfPlus(quote, userCompany = {}) {
   doc.text(`R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, boxX + boxWidth - 4, resumoY, { align: 'right' })
 
   // ======= OBSERVAÇÕES =======
-  if (quote.obs) {
+  if (quote?.obs) {
     yPos = resumoY + 12
-    
+
     if (yPos > pageHeight - 50) {
       doc.addPage()
       yPos = 20
@@ -238,18 +286,26 @@ export function makeQuotePdfPlus(quote, userCompany = {}) {
     doc.setFillColor(254, 252, 232) // amber-50
     doc.setDrawColor(251, 191, 36) // amber-400
     doc.setLineWidth(0.5)
-    doc.roundedRect(15, yPos, pageWidth - 30, 25, 3, 3, 'FD')
+    if (typeof doc.roundedRect === 'function') {
+      try {
+        doc.roundedRect(15, yPos, pageWidth - 30, 25, 3, 3, 'FD')
+      } catch {
+        doc.rect(15, yPos, pageWidth - 30, 25, 'FD')
+      }
+    } else {
+      doc.rect(15, yPos, pageWidth - 30, 25, 'FD')
+    }
 
     doc.setFontSize(9)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(146, 64, 14) // amber-800
-    doc.text('📝 OBSERVAÇÕES', 20, yPos + 6)
+    doc.text('OBSERVAÇÕES', 20, yPos + 6)
 
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(9)
     doc.setTextColor(60, 60, 60)
 
-    const obsLines = doc.splitTextToSize(quote.obs, pageWidth - 40)
+    const obsLines = doc.splitTextToSize(String(quote.obs || ''), pageWidth - 40)
     doc.text(obsLines, 20, yPos + 12)
   }
 
@@ -271,6 +327,8 @@ export function makeQuotePdfPlus(quote, userCompany = {}) {
   doc.text('www.orcamentix.com.br', pageWidth / 2, footerY + 4, { align: 'center' })
 
   // Salvar
-  const fileName = `orcamento-${quote.cliente?.nome || 'cliente'}-${Date.now()}.pdf`
+  const safeName = String(quote?.cliente?.nome || 'cliente').replace(/[^a-z0-9-_]/gi, '-').toLowerCase()
+  const fileName = `orcamento-${safeName}-${Date.now()}.pdf`
+
   doc.save(fileName)
 }
